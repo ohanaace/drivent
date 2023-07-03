@@ -4,6 +4,7 @@ import { invalidDataError, notFoundError } from '@/errors';
 import addressRepository, { CreateAddressParams } from '@/repositories/address-repository';
 import enrollmentRepository, { CreateEnrollmentParams } from '@/repositories/enrollment-repository';
 import { exclude } from '@/utils/prisma-utils';
+import httpStatus from 'http-status';
 
 // TODO - Receber o CEP por parâmetro nesta função.
 async function getAddressFromCEP(cep: string) {
@@ -13,15 +14,15 @@ async function getAddressFromCEP(cep: string) {
     throw invalidDataError(details);
   };
   // FIXME: está com CEP fixo!
-  const result = await request.get(`${process.env.VIA_CEP_API}/cep?cep=${cep}/json/`);
+  const result = await request.get(`${process.env.VIA_CEP_API}/${cep}/json/`);
 
-  if (!result.data) {
+  if (result.status !== httpStatus.OK || result.data.erro) {
     throw notFoundError();
   };
 
   // FIXME: não estamos interessados em todos os campos
-  const {logradouro, complemento, bairro, localidade: cidade, uf} = result.data;
-  return {logradouro, complemento, bairro, localidade: cidade, uf};
+  const {logradouro, complemento, bairro, localidade, uf} = result.data;
+  return {logradouro, complemento, bairro, cidade: localidade, uf};
 }
 
 async function getOneWithAddressByUserId(userId: number): Promise<GetOneWithAddressByUserIdResult> {
@@ -51,9 +52,12 @@ type GetAddressResult = Omit<Address, 'createdAt' | 'updatedAt' | 'enrollmentId'
 async function createOrUpdateEnrollmentWithAddress(params: CreateOrUpdateEnrollmentWithAddress) {
   const enrollment = exclude(params, 'address');
   const address = getAddressForUpsert(params.address);
-
+  const validCep = address.cep
   // TODO - Verificar se o CEP é válido antes de associar ao enrollment.
-
+  const result = await request.get(`${process.env.VIA_CEP_API}/${validCep}/json/`);
+  if(result.status !== 200 || result.data.erro){
+    throw notFoundError();
+  }
   const newEnrollment = await enrollmentRepository.upsert(params.userId, enrollment, exclude(enrollment, 'userId'));
 
   await addressRepository.upsert(newEnrollment.id, address, address);
