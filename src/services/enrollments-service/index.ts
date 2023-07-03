@@ -13,14 +13,15 @@ async function getAddressFromCEP(cep: string) {
     throw invalidDataError(details);
   };
   // FIXME: está com CEP fixo!
-  const result = await request.get(`${process.env.VIA_CEP_API}/${cep}/json/`);
+  const result = await request.get(`${process.env.VIA_CEP_API}/cep?cep=${cep}/json/`);
 
   if (!result.data) {
     throw notFoundError();
-  }
+  };
 
   // FIXME: não estamos interessados em todos os campos
-  return result.data;
+  const {logradouro, complemento, bairro, localidade: cidade, uf} = result.data;
+  return {logradouro, complemento, bairro, localidade: cidade, uf};
 }
 
 async function getOneWithAddressByUserId(userId: number): Promise<GetOneWithAddressByUserIdResult> {

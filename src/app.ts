@@ -2,9 +2,9 @@ import 'reflect-metadata';
 import 'express-async-errors';
 import express, { Express } from 'express';
 import cors from 'cors';
-
+import dotenv from "dotenv";
 import { loadEnv, connectDb, disconnectDB } from '@/config';
-
+dotenv.config()
 loadEnv();
 
 import { handleApplicationErrors } from '@/middlewares';
